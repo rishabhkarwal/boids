@@ -31,6 +31,41 @@ def clamp(vector, scale):
         return vector / magnitude * scale
     return vector
 
+class Grid:
+    def __init__(self, size):
+        self.size = size
+        self.squares = {}
+        # precompute the 9 spatial offsets
+        self.offsets = [
+            (dx, dy) for dx in [-1, 0, 1] for dy in [-1, 0, 1]
+        ]
+
+    def clear(self):
+        self.squares.clear()
+
+    def convert(self, position):
+        return (int(position[0] // self.size), int(position[1] // self.size))
+
+    # drop an agent into its current square
+    def insert(self, agent):
+        square = self.convert(agent.position)
+        if square not in self.squares:
+            self.squares[square] = []
+        self.squares[square].append(agent)
+
+    # retrieve all agents from a specific square and its 8 neighbours
+    def get_neighbours(self, position):
+        x, y = self.convert(position)
+        neighbours = []
+        
+        # loop through a 3x3 grid around the boid
+        for dx, dy in self.offsets:
+            square = (x + dx, y + dy)
+            if square in self.squares:
+                neighbours.extend(self.squares[square])
+                    
+        return neighbours
+
 class Agent:
     colour = (58, 124, 165) # main colour
     outline = (129, 195, 215)
@@ -80,22 +115,6 @@ class Agent:
             
         pygame.draw.polygon(screen, self.colour, points)
         pygame.draw.polygon(screen, self.outline, points, 2)
-
-        # senses
-
-        # radius of avoidance (separation)
-        pygame.draw.circle(screen, (255, 20, 40), self.position, self.avoidance, 2)
-
-        # radius of vision (alignment, cohesion)
-        start_angle = -heading - self.fov / 2
-        stop_angle = -heading + self.fov / 2
-
-        pygame.draw.arc(screen, (25, 255, 68), (self.position[0] - self.vision, self.position[1] - self.vision, self.vision * 2, self.vision * 2), start_angle, stop_angle, 1)
-
-        left_edge = self.position + self.vision * np.array([np.cos(-stop_angle), np.sin(-stop_angle)])
-        right_edge = self.position + self.vision * np.array([np.cos(-start_angle), np.sin(-start_angle)])
-        pygame.draw.line(screen, (25, 255, 68), self.position, left_edge, 1)
-        pygame.draw.line(screen, (25, 255, 68), self.position, right_edge, 1)
 
     def sense(self, others):
         force = np.array([0.0, 0.0], dtype=float)
@@ -150,13 +169,15 @@ class Agent:
         self.velocity += force
 
 def main():
-    N = 50 # number of agents
+    N = 100 # number of agents
  
     # arranges N agents in a circle moving outward
     boids = [
         Agent(np.array([WIDTH / 2, HEIGHT / 2]) + 100 * np.array([np.cos(theta), np.sin(theta)]), (np.cos(theta), np.sin(theta)))
         for theta in np.linspace(0, 2 * np.pi, N + 1)[:-1]
     ]
+
+    grid = Grid(max(Agent.vision, Agent.avoidance))
 
     while 1:
         for event in pygame.event.get():
@@ -165,8 +186,12 @@ def main():
 
         screen.fill(background)
 
+        grid.clear()
         for boid in boids:
-            boid.sense(boids)
+            grid.insert(boid)
+
+        for boid in boids:
+            boid.sense(grid.get_neighbours(boid.position))
             boid.update()
             boid.draw()
 
