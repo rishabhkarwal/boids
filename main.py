@@ -17,7 +17,7 @@ class Agent:
     colour = (58, 124, 165) # main colour
     outline = (129, 195, 215)
     size = 10 # 'radius'
-    
+
     def __init__(self, position, velocity):
         self.position = np.array(position)
         self.velocity = np.array(velocity)
@@ -36,7 +36,7 @@ class Agent:
 
         points = [
             self.position + self.size * np.array([np.cos(theta), np.sin(theta)])
-            for theta in np.linspace(0, 2 * np.pi, 3 + 1)[:-1] + heading # gets angle offsets for n-gon
+            for theta in np.radians([0, 140, 220]) + heading # sleeker design
         ]
             
         pygame.draw.polygon(screen, self.colour, points)
