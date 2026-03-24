@@ -90,20 +90,16 @@ class Agent:
         # left wall
         if self.position[0] <= self.size:
             self.position[0] = self.size
-            self.velocity[0] *= -1
         # right wall
         elif self.position[0] >= WIDTH - self.size:
             self.position[0] = WIDTH - self.size
-            self.velocity[0] *= -1
 
         # top wall
         if self.position[1] <= self.size:
             self.position[1] = self.size
-            self.velocity[1] *= -1
         # bottom wall
         elif self.position[1] >= HEIGHT - self.size:
             self.position[1] = HEIGHT - self.size
-            self.velocity[1] *= -1
 
     def draw(self):
         heading = np.arctan2(self.velocity[1], self.velocity[0])
@@ -161,6 +157,33 @@ class Agent:
             # vector pointing from agent to the centre of mass
             steer = np.mean(_cohesion, axis=0) - self.position
             force += normalise(steer) * cohesion
+
+        # wall avoidance
+        _wall = np.array([0.0, 0.0], dtype=float)
+        distance = self.avoidance * 2
+        
+        # left wall
+        dist_left = self.position[0]
+        if dist_left < distance:
+            _wall[0] += 1 / max(dist_left, 0.1)
+            
+        # right wall
+        right = WIDTH - self.position[0]
+        if right < distance:
+            _wall[0] -= 1 / max(right, 0.1)
+            
+        # top wall
+        top = self.position[1]
+        if top < distance:
+            _wall[1] += 1 / max(top, 0.1)
+            
+        # bottom wall
+        bottom = HEIGHT - self.position[1]
+        if bottom < distance:
+            _wall[1] -= 1 / max(bottom, 0.1)
+            
+        if np.linalg.norm(_wall) > 0:
+            force += normalise(_wall) * 1000 # very high to prevent piercing
 
         # so they do not snap instantly
         max_force = 0.15
